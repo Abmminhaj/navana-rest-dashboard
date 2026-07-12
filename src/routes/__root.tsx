@@ -73,8 +73,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Navana Rest House — Hotel Management System" },
-      { name: "description", content: "Internal hotel management system for Navana Rest House." },
+      { title: "Dashboard — Navana Rest House" },
+      { name: "description", content: "Daily operations overview for Navana Rest House." },
+      { property: "og:title", content: "Dashboard — Navana Rest House" },
+      { name: "twitter:title", content: "Dashboard — Navana Rest House" },
+      { property: "og:description", content: "Daily operations overview for Navana Rest House." },
+      { name: "twitter:description", content: "Daily operations overview for Navana Rest House." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/cbd08350-3839-404b-8573-b3db7b965c3d/id-preview-f801d6b8--042f5736-c1d4-4b73-809f-ba2b6f025f70.lovable.app-1783246426410.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/cbd08350-3839-404b-8573-b3db7b965c3d/id-preview-f801d6b8--042f5736-c1d4-4b73-809f-ba2b6f025f70.lovable.app-1783246426410.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
