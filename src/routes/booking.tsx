@@ -11,12 +11,18 @@ export const Route = createFileRoute("/booking")({
 
 function BookingPage() {
   const [phone, setPhone] = useState("");
+  const [selectedRoom, setSelectedRoom] = useState("");
   const suggestion = useMemo(() => {
     if (phone.length < 4) return null;
     return customerHistory.find((c) => c.phone.replace(/\D/g, "").includes(phone.replace(/\D/g, "")));
   }, [phone]);
 
   const availableRooms = rooms.filter((r) => r.status === "Available");
+  const roomInfo = availableRooms.find(
+  (r) => r.number === selectedRoom
+);
+  
+  const bookingId = "NRH-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-0001";
 
   return (
     <div>
@@ -33,7 +39,28 @@ function BookingPage() {
           </>
         }
       />
-
+    <div className="border-b border-border p-6">
+      <Field label="Guest Type">
+      <select
+  className={selectClass}
+  value={selectedRoom}
+  onChange={(e) => setSelectedRoom(e.target.value)}
+>
+      <option>Walk-in Guest</option>
+      <option>Online Booking</option>
+      <option>Corporate Guest</option>
+      <option>Regular Guest</option>
+      <option>VIP Guest</option>
+      </select>
+      </Field>
+      <Field label="Booking ID">
+  <input
+    className={inputClass}
+    value={bookingId}
+    readOnly
+  />
+</Field>
+    </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
@@ -82,19 +109,28 @@ function BookingPage() {
             <SectionTitle title="Room Information" action={<BedDouble className="h-4 w-4 text-muted-foreground" />} />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Room Number">
-                <select className={selectClass}>
-                  {availableRooms.map((r) => (
-                    <option key={r.number}>{r.number} — {r.type} (৳{r.rent})</option>
-                  ))}
-                </select>
+                <select
+  className={selectClass}
+  value={selectedRoom}
+  onChange={(e) => setSelectedRoom(e.target.value)}
+>
+  <option value="">Select Room</option>
+
+  {availableRooms.map((r) => (
+    <option key={r.number} value={r.number}>
+      {r.number} — {r.type}
+    </option>
+  ))}
+</select>
               </Field>
               <Field label="Room Type">
-                <select className={selectClass}>
-                  <option>Standard</option>
-                  <option>Deluxe</option>
-                  <option>Suite</option>
-                </select>
-              </Field>
+  <input
+    className={inputClass}
+    value={roomInfo?.type || ""}
+    readOnly
+    placeholder="Select a room first"
+  />
+</Field>
               <Field label="Check-in Date">
                 <input type="date" className={inputClass} defaultValue="2026-06-29" />
               </Field>
