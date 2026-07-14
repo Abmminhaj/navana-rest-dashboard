@@ -12,6 +12,16 @@ export const Route = createFileRoute("/booking")({
 function BookingPage() {
   const [phone, setPhone] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("");
+  const [guestType, setGuestType] = useState("Walk-in Guest");
+  const [roomRent, setRoomRent] = useState("");
+  const [discount, setDiscount] = useState("");
+  const [advance, setAdvance] = useState("");
+  const [checkInDate, setCheckInDate] = useState("2026-06-29");
+  const [checkOutDate, setCheckOutDate] = useState("2026-06-30");
+  const [customerName, setCustomerName] = useState("");
+  const [nid, setNid] = useState("");
+  const [profession, setProfession] = useState("");
+  const [address, setAddress] = useState("");
   const suggestion = useMemo(() => {
     if (phone.length < 4) return null;
     return customerHistory.find((c) => c.phone.replace(/\D/g, "").includes(phone.replace(/\D/g, "")));
@@ -21,6 +31,18 @@ function BookingPage() {
   const roomInfo = availableRooms.find(
   (r) => r.number === selectedRoom
 );
+  const nights = Math.max(
+  1,
+  Math.ceil(
+    (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
+      (1000 * 60 * 60 * 24)
+  )
+);
+  const totalRent =
+  (Number(roomRent) || 0) * nights - (Number(discount) || 0);
+
+  const due =
+  totalRent - (Number(advance) || 0);
   
   const bookingId = "NRH-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-0001";
 
@@ -41,18 +63,25 @@ function BookingPage() {
       />
     <div className="border-b border-border p-6">
       <Field label="Guest Type">
-      <select
+  <select
   className={selectClass}
   value={selectedRoom}
-  onChange={(e) => setSelectedRoom(e.target.value)}
+  onChange={(e) => {
+    const roomNumber = e.target.value;
+    setSelectedRoom(roomNumber);
+
+    const room = availableRooms.find((r) => r.number === roomNumber);
+
+    setRoomRent(room ? room.rent.toString() : "");
+  }}
 >
-      <option>Walk-in Guest</option>
-      <option>Online Booking</option>
-      <option>Corporate Guest</option>
-      <option>Regular Guest</option>
-      <option>VIP Guest</option>
-      </select>
-      </Field>
+    <option>Walk-in Guest</option>
+    <option>Online Booking</option>
+    <option>Corporate Guest</option>
+    <option>Regular Guest</option>
+    <option>VIP Guest</option>
+  </select>
+</Field>
       <Field label="Booking ID">
   <input
     className={inputClass}
@@ -67,9 +96,14 @@ function BookingPage() {
             <SectionTitle title="Customer Information" action={<User className="h-4 w-4 text-muted-foreground" />} />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Customer Name">
-                <input className={inputClass} placeholder="e.g. Md. Tanvir Ahmed" />
+                <input
+                className={inputClass}
+                placeholder="e.g. Md. Tanvir Ahmed"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                 />
               </Field>
-              <Field label="Phone Number" hint={suggestion ? `Existing customer matched — ${suggestion.name}` : "Auto-suggests existing customers"}>
+              <Field label="Phone Number">
                 <div className="relative">
                   <input
                     className={inputClass + " pl-9"}
@@ -79,27 +113,98 @@ function BookingPage() {
                   />
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   {suggestion && (
-                    <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-border bg-card p-3 shadow-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-sm font-semibold text-foreground">{suggestion.name}</div>
-                          <div className="text-[11px] text-muted-foreground">{suggestion.address} · NID {suggestion.nid}</div>
-                        </div>
-                        <button className="text-xs font-semibold text-primary hover:underline">Use details</button>
-                      </div>
-                    </div>
+                    <div className="rounded-lg bg-white p-4 shadow-sm">
+
+  <h3 className="mb-3 text-base font-bold text-blue-700">
+    👤 Existing Customer
+  </h3>
+
+  <div className="grid grid-cols-2 gap-y-2 text-sm">
+
+    <span className="font-medium">Name</span>
+    <span>{suggestion.name}</span>
+
+    <span className="font-medium">Phone</span>
+    <span>{suggestion.phone}</span>
+
+    <span className="font-medium">NID</span>
+    <span>{suggestion.nid}</span>
+
+    <span className="font-medium">Address</span>
+    <span>{suggestion.address}</span>
+
+  </div>
+
+  <hr className="my-4" />
+
+  <div className="mb-3 flex items-center gap-2">
+  <BedDouble className="h-5 w-5 text-blue-600" />
+  <h4 className="font-semibold text-gray-800">
+    Last Stay
+  </h4>
+  </div>
+
+  <div className="grid grid-cols-2 gap-y-2 text-sm">
+
+    <span className="font-medium">Room</span>
+    <span>{suggestion.room}</span>
+
+    <span className="font-medium">Check In</span>
+    <span>{suggestion.checkIn}</span>
+
+    <span className="font-medium">Check Out</span>
+    <span>{suggestion.checkOut}</span>
+
+    <span className="font-medium">Stayed</span>
+    <span>{suggestion.stay}</span>
+
+    <span className="font-medium">Rent</span>
+    <span>৳{suggestion.rent}</span>
+
+  </div>
+
+  <button
+    className={buttonPrimary + " mt-5 w-full"}
+    onClick={() => {
+      if (!suggestion) return;
+
+      setCustomerName(suggestion.name);
+      setPhone(suggestion.phone);
+      setNid(suggestion.nid);
+      setAddress(suggestion.address);
+    }}
+  >
+    Use Details
+  </button>
+
+</div>      
                   )}
                 </div>
               </Field>
               <Field label="National ID">
-                <input className={inputClass} placeholder="13 or 17 digit NID" />
+                <input
+                className={inputClass}
+                placeholder="13 or 17 digit NID"
+                value={nid}
+                onChange={(e) => setNid(e.target.value)}
+                />
               </Field>
               <Field label="Profession">
-                <input className={inputClass} placeholder="e.g. Banker, Doctor" />
-              </Field>
+                <input
+                className={inputClass}
+                placeholder="e.g. Banker, Doctor"
+                value={profession}
+                onChange={(e) => setProfession(e.target.value)}
+              />
+                </Field>
               <div className="md:col-span-2">
                 <Field label="Address">
-                  <input className={inputClass} placeholder="Full address" />
+                  <input
+                  className={inputClass}
+                  placeholder="Full address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
                 </Field>
               </div>
             </div>
@@ -109,20 +214,29 @@ function BookingPage() {
             <SectionTitle title="Room Information" action={<BedDouble className="h-4 w-4 text-muted-foreground" />} />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Room Number">
-                <select
-  className={selectClass}
-  value={selectedRoom}
-  onChange={(e) => setSelectedRoom(e.target.value)}
->
-  <option value="">Select Room</option>
+  <select
+    className={selectClass}
+    value={selectedRoom}
+    onChange={(e) => {
+      const roomNumber = e.target.value;
+      setSelectedRoom(roomNumber);
 
-  {availableRooms.map((r) => (
-    <option key={r.number} value={r.number}>
-      {r.number} — {r.type}
-    </option>
-  ))}
-</select>
-              </Field>
+      const room = availableRooms.find(
+        (r) => r.number === roomNumber
+      );
+
+      setRoomRent(room ? room.rent.toString() : "");
+    }}
+  >
+    <option value="">Select Room</option>
+
+    {availableRooms.map((r) => (
+      <option key={r.number} value={r.number}>
+        {r.number}
+      </option>
+    ))}
+  </select>
+</Field>
               <Field label="Room Type">
   <input
     className={inputClass}
@@ -132,13 +246,23 @@ function BookingPage() {
   />
 </Field>
               <Field label="Check-in Date">
-                <input type="date" className={inputClass} defaultValue="2026-06-29" />
+                <input
+  type="date"
+  className={inputClass}
+  value={checkInDate}
+  onChange={(e) => setCheckInDate(e.target.value)}
+/>
               </Field>
               <Field label="Check-in Time">
                 <input type="time" className={inputClass} defaultValue="14:00" />
               </Field>
               <Field label="Expected Check-out Date">
-                <input type="date" className={inputClass} defaultValue="2026-06-30" />
+                <input
+  type="date"
+  className={inputClass}
+  value={checkOutDate}
+  onChange={(e) => setCheckOutDate(e.target.value)}
+/>
               </Field>
               <Field label="Expected Check-out Time">
                 <input type="time" className={inputClass} defaultValue="12:00" />
@@ -150,11 +274,30 @@ function BookingPage() {
             <SectionTitle title="Payment Information" action={<CreditCard className="h-4 w-4 text-muted-foreground" />} />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-3">
               <Field label="Room Rent (per night)">
-                <input className={inputClass} defaultValue="3500" />
-              </Field>
-              <Field label="Advance Payment">
-                <input className={inputClass} placeholder="0" />
-              </Field>
+  <input
+    className={inputClass}
+    value={roomRent}
+    onChange={(e) => setRoomRent(e.target.value)}
+    placeholder="Select a room first"
+  />
+</Field>
+              <Field label="Discount">
+  <input
+    className={inputClass}
+    value={discount}
+    onChange={(e) => setDiscount(e.target.value)}
+    placeholder="0"
+  />
+</Field>
+
+<Field label="Advance Payment">
+  <input
+    className={inputClass}
+    value={advance}
+    onChange={(e) => setAdvance(e.target.value)}
+    placeholder="0"
+  />
+</Field>
               <Field label="Payment Method">
                 <select className={selectClass}>
                   <option>Cash</option>
@@ -184,15 +327,26 @@ function BookingPage() {
           <h3 className="text-sm font-semibold text-foreground">Booking Summary</h3>
           <p className="text-xs text-muted-foreground">Live preview of charges</p>
           <dl className="mt-4 space-y-3 text-sm">
-            <Row label="Room" value="201 · Deluxe" />
-            <Row label="Nights" value="1" />
-            <Row label="Room Rent" value="৳3,500" />
-            <Row label="Service Charge" value="৳350" />
-            <Row label="VAT (15%)" value="৳577" />
-            <div className="my-2 border-t border-border" />
-            <Row label="Total" value="৳4,427" bold />
-            <Row label="Advance" value="৳2,000" />
-            <Row label="Due at Checkout" value="৳2,427" bold />
+            <Row
+  label="Room"
+  value={
+    selectedRoom
+      ? `${selectedRoom} · ${roomInfo?.type ?? ""}`
+      : "-"
+  }
+/>
+<Row label="Nights" value={String(nights)} />
+<Row label="Room Rent" value={`৳${roomRent || 0}`} />
+
+<Row label="Discount" value={`৳${discount || 0}`} />
+
+<div className="my-2 border-t border-border" />
+
+<Row label="Estimated Total" value={`৳${totalRent}`} bold />
+
+<Row label="Advance" value={`৳${advance || 0}`} />
+
+<Row label="Estimated Due" value={`৳${due}`} bold />
           </dl>
         </Card>
       </div>
