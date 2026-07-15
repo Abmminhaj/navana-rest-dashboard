@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui-kit";
 
 interface Stay {
-  id: number;
+  id: string;
   room: string;
   customer: string;
   remaining: number;

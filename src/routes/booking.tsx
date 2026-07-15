@@ -49,7 +49,7 @@ function BookingPage() {
   
   const bookingId = "NRH-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-0001";
   
-  function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+ 
   function handleSaveBooking() {
   const bookingData = {
     bookingId,
@@ -77,11 +77,13 @@ function BookingPage() {
         description="Register a new guest and assign a room in under a minute."
         actions={
           <>
-            <button className={buttonGhost}>Cancel</button>
-            <button className={buttonPrimary}>
-              <Save className="h-4 w-4" />
-              Save Booking
-            </button>
+            <button
+  className={buttonPrimary}
+  onClick={handleSaveBooking}
+>
+  <Save className="h-4 w-4" />
+  Save Booking
+</button>
           </>
         }
       />
@@ -401,7 +403,7 @@ function BookingPage() {
   value: string;
   bold?: boolean;
 }) {
-  
+
   return (
     <div className="flex items-center justify-between">
       <dt className="text-muted-foreground">{label}</dt>
