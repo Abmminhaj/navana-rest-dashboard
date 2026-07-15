@@ -13,6 +13,8 @@ function BookingPage() {
   const [phone, setPhone] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("");
   const [guestType, setGuestType] = useState("Walk-in Guest");
+  const [advancePayment, setAdvancePayment] = useState(0);
+  const [notes, setNotes] = useState("");
   const [roomRent, setRoomRent] = useState("");
   const [discount, setDiscount] = useState("");
   const [advance, setAdvance] = useState("");
@@ -22,6 +24,7 @@ function BookingPage() {
   const [nid, setNid] = useState("");
   const [profession, setProfession] = useState("");
   const [address, setAddress] = useState("");
+  const [showSuggestion, setShowSuggestion] = useState(true);
   const suggestion = useMemo(() => {
     if (phone.length < 4) return null;
     return customerHistory.find((c) => c.phone.replace(/\D/g, "").includes(phone.replace(/\D/g, "")));
@@ -45,6 +48,27 @@ function BookingPage() {
   totalRent - (Number(advance) || 0);
   
   const bookingId = "NRH-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-0001";
+  
+  function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  function handleSaveBooking() {
+  const bookingData = {
+    bookingId,
+    guestType,
+    customerName,
+    phone,
+    nid,
+    address,
+    room: selectedRoom,
+    roomType: roomInfo?.type,
+    roomRent: roomInfo?.rent,
+    advancePayment,
+    notes,
+  };
+
+  console.log("Booking Saved:", bookingData);
+
+  alert("Booking data captured successfully!");
+}
 
   return (
     <div>
@@ -106,14 +130,20 @@ function BookingPage() {
               <Field label="Phone Number">
                 <div className="relative">
                   <input
-                    className={inputClass + " pl-9"}
-                    placeholder="017XX-XXXXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
+  className={inputClass + " pl-9"}
+  placeholder="017XX-XXXXXX"
+  value={phone}
+  onChange={(e) => {
+    setPhone(e.target.value);
+    setShowSuggestion(true);
+  }}
+/>
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  {suggestion && (
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
+                  
+                </div>
+              </Field>
+              {suggestion && showSuggestion && (
+                    <div className="rounded-lg bg-white p-4 shadow-sm md:col-start-2">
 
   <h3 className="mb-3 text-base font-bold text-blue-700">
     👤 Existing Customer
@@ -172,6 +202,7 @@ function BookingPage() {
       setPhone(suggestion.phone);
       setNid(suggestion.nid);
       setAddress(suggestion.address);
+      setShowSuggestion(false);
     }}
   >
     Use Details
@@ -179,8 +210,6 @@ function BookingPage() {
 
 </div>      
                   )}
-                </div>
-              </Field>
               <Field label="National ID">
                 <input
                 className={inputClass}
@@ -293,9 +322,10 @@ function BookingPage() {
 <Field label="Advance Payment">
   <input
     className={inputClass}
-    value={advance}
-    onChange={(e) => setAdvance(e.target.value)}
+    type="number"
     placeholder="0"
+    value={advancePayment}
+    onChange={(e) => setAdvancePayment(Number(e.target.value))}
   />
 </Field>
               <Field label="Payment Method">
@@ -309,14 +339,22 @@ function BookingPage() {
               </Field>
               <div className="md:col-span-3">
                 <Field label="Notes">
-                  <textarea className={textareaClass} placeholder="Special requests, ID verification notes, etc." />
-                </Field>
+  <textarea
+    className={textareaClass}
+    placeholder="Special requests, ID verification notes, etc."
+    value={notes}
+    onChange={(e) => setNotes(e.target.value)}
+  />
+</Field>
               </div>
             </div>
           </Card>
 
           <div className="flex justify-end">
-            <button className={buttonPrimary + " h-12 px-8 text-base"}>
+            <button
+  className={buttonPrimary + " h-12 px-8 text-base"}
+  onClick={handleSaveBooking}
+>
               <Save className="h-5 w-5" />
               Save Booking
             </button>
@@ -354,7 +392,16 @@ function BookingPage() {
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  function Row({
+  label,
+  value,
+  bold,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+}) {
+  
   return (
     <div className="flex items-center justify-between">
       <dt className="text-muted-foreground">{label}</dt>
