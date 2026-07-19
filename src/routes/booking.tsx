@@ -3,6 +3,10 @@ import { useMemo, useState } from "react";
 import { Save, User, BedDouble, CreditCard, Search } from "lucide-react";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
 import { customerHistory, rooms } from "@/lib/mock-data";
+import { saveBooking } from "@/lib/booking-storage";
+import { occupyRoom } from "@/lib/room-storage";
+import { refreshRooms } from "@/lib/room-storage";
+
 
 export const Route = createFileRoute("/booking")({
   head: () => ({ meta: [{ title: "New Booking — Navana Rest House" }] }),
@@ -64,6 +68,12 @@ function BookingPage() {
     advancePayment,
     notes,
   };
+  
+  saveBooking(bookingData);
+
+  occupyRoom(selectedRoom);
+
+  refreshRooms();
 
   console.log("Booking Saved:", bookingData);
 

@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, PageHeader, StatusPill, buttonGhost } from "@/components/ui-kit";
-import { rooms, type RoomStatus } from "@/lib/mock-data";
+import { type RoomStatus } from "@/lib/mock-data";
+import { getRooms } from "@/lib/room-storage";
 import { X, BedDouble, Wifi, Tv, Wind, ShowerHead } from "lucide-react";
 
 export const Route = createFileRoute("/rooms")({
@@ -9,16 +10,61 @@ export const Route = createFileRoute("/rooms")({
   component: RoomsPage,
 });
 
-const statusStyles: Record<RoomStatus, { bg: string; dot: string; tone: "success" | "danger" | "warning" | "neutral" }> = {
-  Available: { bg: "bg-emerald-50 border-emerald-200 hover:border-emerald-400", dot: "bg-emerald-500", tone: "success" },
-  Occupied: { bg: "bg-rose-50 border-rose-200 hover:border-rose-400", dot: "bg-rose-500", tone: "danger" },
-  Cleaning: { bg: "bg-amber-50 border-amber-200 hover:border-amber-400", dot: "bg-amber-500", tone: "warning" },
-  Maintenance: { bg: "bg-slate-100 border-slate-300 hover:border-slate-400", dot: "bg-slate-500", tone: "neutral" },
+const statusStyles: Record<
+  RoomStatus,
+  {
+    bg: string;
+    dot: string;
+    tone: "success" | "danger" | "warning" | "neutral";
+  }
+> = {
+  Available: {
+    bg: "bg-emerald-50 border-emerald-200 hover:border-emerald-400",
+    dot: "bg-emerald-500",
+    tone: "success",
+  },
+  Occupied: {
+    bg: "bg-rose-50 border-rose-200 hover:border-rose-400",
+    dot: "bg-rose-500",
+    tone: "danger",
+  },
+  Cleaning: {
+    bg: "bg-amber-50 border-amber-200 hover:border-amber-400",
+    dot: "bg-amber-500",
+    tone: "warning",
+  },
+  Maintenance: {
+    bg: "bg-slate-100 border-slate-300 hover:border-slate-400",
+    dot: "bg-slate-500",
+    tone: "neutral",
+  },
+  Reserved: {
+    bg: "bg-blue-50 border-blue-200 hover:border-blue-400",
+    dot: "bg-blue-500",
+    tone: "neutral",
+  },
 };
 
 function RoomsPage() {
   const [filter, setFilter] = useState<RoomStatus | "All">("All");
+  const [rooms, setRooms] = useState(getRooms());
+
+useEffect(() => {
+  const loadRooms = () => {
+    setRooms(getRooms());
+  };
+
+  loadRooms();
+
+  window.addEventListener("roomsUpdated", loadRooms);
+
+  return () => {
+    window.removeEventListener("roomsUpdated", loadRooms);
+  };
+}, []);
   const [selected, setSelected] = useState<typeof rooms[number] | null>(null);
+  const [editStatus, setEditStatus] = useState<RoomStatus>("Available");
+  const [note, setNote] = useState("");
 
   const summary = {
     total: rooms.length,
@@ -46,7 +92,7 @@ function RoomsPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        {(["All", "Available", "Occupied", "Cleaning", "Maintenance"] as const).map((f) => (
+        {(["All", "Available", "Occupied", "Reserved", "Cleaning", "Maintenance"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -72,7 +118,11 @@ function RoomsPage() {
                 return (
                   <button
                     key={r.number}
-                    onClick={() => setSelected(r)}
+                    onClick={() => {
+                    setSelected(r);
+                    setEditStatus(r.status);
+                    setNote("");
+                    }}
                     className={`group rounded-xl border p-4 text-left transition ${s.bg}`}
                   >
                     <div className="flex items-start justify-between">
@@ -110,10 +160,38 @@ function RoomsPage() {
               </button>
             </div>
             <div className="space-y-4 p-6">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status</span>
-                <StatusPill tone={statusStyles[selected.status].tone}>{selected.status}</StatusPill>
-              </div>
+              <div className="space-y-2">
+  <label className="text-sm font-medium text-foreground">
+    Room Status
+  </label>
+
+  <select
+    value={editStatus}
+    onChange={(e) =>
+      setEditStatus(e.target.value as RoomStatus)
+    }
+    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+  >
+    <option value="Available">Available</option>
+    <option value="Occupied">Occupied</option>
+    <option value="Reserved">Reserved</option>
+    <option value="Cleaning">Cleaning</option>
+    <option value="Maintenance">Maintenance</option>
+  </select>
+</div>
+<div className="space-y-2">
+  <label className="text-sm font-medium text-foreground">
+    Notes
+  </label>
+
+  <textarea
+    value={note}
+    onChange={(e) => setNote(e.target.value)}
+    rows={3}
+    placeholder="Write any note..."
+    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+  />
+</div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Nightly Rate</span>
                 <span className="text-base font-bold text-foreground">৳{selected.rent.toLocaleString()}</span>

@@ -1,5 +1,10 @@
 // Mock data used across the prototype
-export type RoomStatus = "Occupied" | "Available" | "Cleaning" | "Maintenance";
+export type RoomStatus =
+  | "Occupied"
+  | "Available"
+  | "Reserved"
+  | "Cleaning"
+  | "Maintenance";
 
 export interface Room {
   number: string;
