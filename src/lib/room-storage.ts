@@ -1,8 +1,8 @@
-import { rooms } from "./mock-data";
+import { rooms, type Room, type RoomStatus } from "./mock-data";
 
 const STORAGE_KEY = "navana_rooms";
 
-export function getRooms() {
+export function getRooms(): Room[] {
   const savedRooms = localStorage.getItem(STORAGE_KEY);
 
   if (savedRooms) {
@@ -14,21 +14,26 @@ export function getRooms() {
   return [...rooms];
 }
 
-export function saveRooms(updatedRooms: any[]) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(updatedRooms)
-  );
+export function saveRooms(updatedRooms: Room[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRooms));
 }
 
 export function occupyRoom(roomNumber: string) {
+  updateRoomStatus(roomNumber, "Occupied");
+}
+
+export function updateRoomStatus(
+  roomNumber: string,
+  status: RoomStatus
+)
+ {
   const allRooms = getRooms();
 
-  const updatedRooms = allRooms.map((room: any) => {
+  const updatedRooms = allRooms.map((room: Room) => {
     if (room.number === roomNumber) {
       return {
         ...room,
-        status: "Occupied",
+        status,
       };
     }
 
@@ -36,7 +41,9 @@ export function occupyRoom(roomNumber: string) {
   });
 
   saveRooms(updatedRooms);
+  refreshRooms();
 }
+
 export function refreshRooms() {
   window.dispatchEvent(new Event("roomsUpdated"));
 }

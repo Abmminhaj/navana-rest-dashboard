@@ -6,6 +6,7 @@ import { customerHistory, rooms } from "@/lib/mock-data";
 import { saveBooking } from "@/lib/booking-storage";
 import { occupyRoom } from "@/lib/room-storage";
 import { refreshRooms } from "@/lib/room-storage";
+import { saveActiveStay } from "@/lib/stay-storage";
 
 
 export const Route = createFileRoute("/booking")({
@@ -68,11 +69,22 @@ function BookingPage() {
     advancePayment,
     notes,
   };
-  
+
+  const activeStay = {
+    id: Date.now().toString(),
+    room: selectedRoom,
+    customer: customerName,
+    phone,
+    nid,
+    checkIn: new Date().toLocaleDateString(),
+    expectedCheckOut: "",
+    advance: Number(advancePayment || 0),
+    remaining: 0,
+  };
+
   saveBooking(bookingData);
-
+  saveActiveStay(activeStay);
   occupyRoom(selectedRoom);
-
   refreshRooms();
 
   console.log("Booking Saved:", bookingData);

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Card, PageHeader, StatusPill, buttonGhost } from "@/components/ui-kit";
 import { type RoomStatus } from "@/lib/mock-data";
-import { getRooms } from "@/lib/room-storage";
+import { getRooms, updateRoomStatus } from "@/lib/room-storage";
 import { X, BedDouble, Wifi, Tv, Wind, ShowerHead } from "lucide-react";
 
 export const Route = createFileRoute("/rooms")({
@@ -65,6 +65,14 @@ useEffect(() => {
   const [selected, setSelected] = useState<typeof rooms[number] | null>(null);
   const [editStatus, setEditStatus] = useState<RoomStatus>("Available");
   const [note, setNote] = useState("");
+
+  const handleSaveRoom = () => {
+  if (!selected) return;
+
+  updateRoomStatus(selected.number, editStatus);
+
+  setSelected(null);
+};
 
   const summary = {
     total: rooms.length,
@@ -208,8 +216,22 @@ useEffect(() => {
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
-              <button onClick={() => setSelected(null)} className={buttonGhost}>Close</button>
-            </div>
+
+  <button
+    onClick={() => setSelected(null)}
+    className={buttonGhost}
+  >
+    Close
+  </button>
+
+  <button
+    onClick={handleSaveRoom}
+    className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
+  >
+    Save Changes
+  </button>
+
+</div>
           </div>
         </div>
       )}

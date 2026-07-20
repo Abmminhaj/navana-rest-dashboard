@@ -1,8 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogOut, X, Search } from "lucide-react";
-import { Card, Field, PageHeader, SectionTitle, StatusPill, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
-import { activeStays, type ActiveStay } from "@/lib/mock-data";
+import {
+  Card,
+  Field,
+  PageHeader,
+  SectionTitle,
+  StatusPill,
+  buttonGhost,
+  buttonPrimary,
+  inputClass,
+  selectClass,
+  textareaClass,
+} from "@/components/ui-kit";
+import { getActiveStays, removeActiveStay } from "@/lib/stay-storage";
+import { updateRoomStatus } from "@/lib/room-storage";
+import type { ActiveStay } from "@/lib/mock-data";
+import { saveCustomerHistory } from "@/lib/customer-history-storage";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({ meta: [{ title: "Check Out — Navana Rest House" }] }),
@@ -10,9 +24,12 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function CheckoutPage() {
-  const [list, setList] = useState(activeStays);
+  const [list, setList] = useState<ActiveStay[]>(getActiveStays());
   const [active, setActive] = useState<ActiveStay | null>(null);
   const [query, setQuery] = useState("");
+  useEffect(() => {
+  setList(getActiveStays());
+}, []);
 
   const filtered = list.filter(
     (s) =>
@@ -140,10 +157,23 @@ function CheckoutPage() {
             <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
               <button onClick={() => setActive(null)} className={buttonGhost}>Cancel</button>
               <button
-                onClick={() => {
-                  setList((l) => l.filter((x) => x.id !== active.id));
-                  setActive(null);
-                }}
+               onClick={() => {
+  saveCustomerHistory({
+    ...active,
+    checkoutDate: new Date().toLocaleDateString(),
+    checkoutTime: new Date().toLocaleTimeString(),
+  });
+
+  removeActiveStay(active.id);
+
+  updateRoomStatus(active.room, "Available");
+
+  setList(getActiveStays());
+
+  setActive(null);
+
+  alert("Guest checked out successfully.");
+}}
                 className={buttonPrimary}
               >
                 Complete Checkout
