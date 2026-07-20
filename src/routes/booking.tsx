@@ -1,12 +1,49 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Save, User, BedDouble, CreditCard, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Save, User, BedDouble, CreditCard, Search, Upload, X } from "lucide-react";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
-import { customerHistory, rooms } from "@/lib/mock-data";
+import { customerHistory, type Room } from "@/lib/mock-data";
 import { saveBooking } from "@/lib/booking-storage";
-import { occupyRoom } from "@/lib/room-storage";
-import { refreshRooms } from "@/lib/room-storage";
+import { getRooms, occupyRoom, refreshRooms } from "@/lib/room-storage";
 import { saveActiveStay } from "@/lib/stay-storage";
+import { divisions, getDistrictsByDivision, getUpazilasByDistrict } from "@/lib/bd-locations";
+
+const MIN_PHOTO_SIZE_BYTES = 10 * 1024; // 10KB minimum
+
+function compressImage(file: File, maxDimension = 1000, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("File could not be read"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Invalid image file"));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas not supported"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 
 export const Route = createFileRoute("/booking")({
@@ -22,14 +59,69 @@ function BookingPage() {
   const [notes, setNotes] = useState("");
   const [roomRent, setRoomRent] = useState("");
   const [discount, setDiscount] = useState("");
-  const [advance, setAdvance] = useState("");
   const [checkInDate, setCheckInDate] = useState("2026-06-29");
   const [checkOutDate, setCheckOutDate] = useState("2026-06-30");
   const [customerName, setCustomerName] = useState("");
+  const [fatherName, setFatherName] = useState("");
   const [nid, setNid] = useState("");
   const [profession, setProfession] = useState("");
-  const [address, setAddress] = useState("");
+  const [nationality, setNationality] = useState("Bangladeshi");
+  const [divisionId, setDivisionId] = useState("");
+  const [districtId, setDistrictId] = useState("");
+  const [upazilaId, setUpazilaId] = useState("");
+  const [village, setVillage] = useState("");
+  const [houseRoad, setHouseRoad] = useState("");
+  const [nidPhoto, setNidPhoto] = useState<string | null>(null);
+  const [nidPhotoName, setNidPhotoName] = useState("");
+  const [customerPhoto, setCustomerPhoto] = useState<string | null>(null);
+  const [customerPhotoName, setCustomerPhotoName] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [showSuggestion, setShowSuggestion] = useState(true);
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  const availableDistricts = useMemo(
+    () => (divisionId ? getDistrictsByDivision(divisionId) : []),
+    [divisionId]
+  );
+  const availableUpazilas = useMemo(
+    () => (districtId ? getUpazilasByDistrict(districtId) : []),
+    [districtId]
+  );
+
+  async function handlePhotoSelect(
+    file: File | undefined,
+    setPhoto: (value: string | null) => void,
+    setName: (value: string) => void
+  ) {
+    setPhotoError("");
+    if (!file) return;
+
+    if (file.size < MIN_PHOTO_SIZE_BYTES) {
+      setPhotoError("ছবির সাইজ অনেক ছোট (কমপক্ষে 10KB হতে হবে)। স্পষ্ট একটা ছবি আপলোড করো।");
+      return;
+    }
+
+    try {
+      const compressed = await compressImage(file);
+      setPhoto(compressed);
+      setName(file.name);
+    } catch {
+      setPhotoError("ছবিটি আপলোড করা যায়নি, অন্য একটি ছবি চেষ্টা করো।");
+    }
+  }
+
+  useEffect(() => {
+    setRooms(getRooms());
+
+    function handleRoomsUpdated() {
+      setRooms(getRooms());
+    }
+
+    window.addEventListener("roomsUpdated", handleRoomsUpdated);
+    return () => window.removeEventListener("roomsUpdated", handleRoomsUpdated);
+  }, []);
+
   const suggestion = useMemo(() => {
     if (phone.length < 4) return null;
     return customerHistory.find((c) => c.phone.replace(/\D/g, "").includes(phone.replace(/\D/g, "")));
@@ -39,6 +131,12 @@ function BookingPage() {
   const roomInfo = availableRooms.find(
   (r) => r.number === selectedRoom
 );
+  const divisionName = divisions.find((d) => d.id === divisionId)?.name || "";
+  const districtName = availableDistricts.find((d) => d.id === districtId)?.name || "";
+  const upazilaName = availableUpazilas.find((u) => u.id === upazilaId)?.name || "";
+  const fullAddress = [houseRoad, village, upazilaName, districtName, divisionName]
+    .filter(Boolean)
+    .join(", ");
   const nights = Math.max(
   1,
   Math.ceil(
@@ -50,7 +148,7 @@ function BookingPage() {
   (Number(roomRent) || 0) * nights - (Number(discount) || 0);
 
   const due =
-  totalRent - (Number(advance) || 0);
+  totalRent - (Number(advancePayment) || 0);
   
   const bookingId = "NRH-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-0001";
   
@@ -60,13 +158,30 @@ function BookingPage() {
     bookingId,
     guestType,
     customerName,
+    fatherName,
     phone,
     nid,
-    address,
+    profession,
+    nationality,
+    division: divisionName,
+    district: districtName,
+    upazila: upazilaName,
+    village,
+    houseRoad,
+    address: fullAddress,
+    nidPhoto,
+    customerPhoto,
     room: selectedRoom,
     roomType: roomInfo?.type,
-    roomRent: roomInfo?.rent,
-    advancePayment,
+    roomRent: Number(roomRent) || 0,
+    checkInDate,
+    checkOutDate,
+    nights,
+    discount: Number(discount) || 0,
+    advancePayment: Number(advancePayment) || 0,
+    totalRent,
+    due,
+    paymentMethod,
     notes,
   };
 
@@ -76,10 +191,12 @@ function BookingPage() {
     customer: customerName,
     phone,
     nid,
+    address: fullAddress,
     checkIn: new Date().toLocaleDateString(),
-    expectedCheckOut: "",
+    expectedCheckOut: checkOutDate,
+    rent: Number(roomRent) || 0,
     advance: Number(advancePayment || 0),
-    remaining: 0,
+    remaining: due,
   };
 
   saveBooking(bookingData);
@@ -112,17 +229,10 @@ function BookingPage() {
     <div className="border-b border-border p-6">
       <Field label="Guest Type">
   <select
-  className={selectClass}
-  value={selectedRoom}
-  onChange={(e) => {
-    const roomNumber = e.target.value;
-    setSelectedRoom(roomNumber);
-
-    const room = availableRooms.find((r) => r.number === roomNumber);
-
-    setRoomRent(room ? room.rent.toString() : "");
-  }}
->
+    className={selectClass}
+    value={guestType}
+    onChange={(e) => setGuestType(e.target.value)}
+  >
     <option>Walk-in Guest</option>
     <option>Online Booking</option>
     <option>Corporate Guest</option>
@@ -225,7 +335,7 @@ function BookingPage() {
       setCustomerName(suggestion.name);
       setPhone(suggestion.phone);
       setNid(suggestion.nid);
-      setAddress(suggestion.address);
+      setVillage(suggestion.address);
       setShowSuggestion(false);
     }}
   >
@@ -250,16 +360,180 @@ function BookingPage() {
                 onChange={(e) => setProfession(e.target.value)}
               />
                 </Field>
+              <Field label="Father's Name">
+                <input
+                className={inputClass}
+                placeholder="e.g. Md. Rahim Uddin"
+                value={fatherName}
+                onChange={(e) => setFatherName(e.target.value)}
+              />
+                </Field>
+              <Field label="Nationality">
+                <input
+                className={inputClass}
+                placeholder="e.g. Bangladeshi"
+                value={nationality}
+                onChange={(e) => setNationality(e.target.value)}
+              />
+                </Field>
               <div className="md:col-span-2">
-                <Field label="Address">
-                  <input
+                <SectionTitle title="Address" />
+              </div>
+              <Field label="Division">
+                <select
+                  className={selectClass}
+                  value={divisionId}
+                  onChange={(e) => {
+                    setDivisionId(e.target.value);
+                    setDistrictId("");
+                    setUpazilaId("");
+                  }}
+                >
+                  <option value="">Select Division</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="District">
+                <select
+                  className={selectClass}
+                  value={districtId}
+                  disabled={!divisionId}
+                  onChange={(e) => {
+                    setDistrictId(e.target.value);
+                    setUpazilaId("");
+                  }}
+                >
+                  <option value="">
+                    {divisionId ? "Select District" : "Select Division first"}
+                  </option>
+                  {availableDistricts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Thana / Upazila">
+                <select
+                  className={selectClass}
+                  value={upazilaId}
+                  disabled={!districtId}
+                  onChange={(e) => setUpazilaId(e.target.value)}
+                >
+                  <option value="">
+                    {districtId ? "Select Thana / Upazila" : "Select District first"}
+                  </option>
+                  {availableUpazilas.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Village">
+                <input
                   className={inputClass}
-                  placeholder="Full address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Village name"
+                  value={village}
+                  onChange={(e) => setVillage(e.target.value)}
                 />
+              </Field>
+              <div className="md:col-span-2">
+                <Field label="House / Road (Optional)">
+                  <input
+                    className={inputClass}
+                    placeholder="House no, Road no"
+                    value={houseRoad}
+                    onChange={(e) => setHouseRoad(e.target.value)}
+                  />
                 </Field>
               </div>
+
+              <div className="md:col-span-2 border-t border-border pt-4">
+                <SectionTitle title="Uploads (Optional)" />
+              </div>
+
+              <Field label="NID Photo">
+                <label className={buttonGhost + " w-full cursor-pointer justify-center"}>
+                  <Upload className="h-4 w-4" />
+                  {nidPhotoName ? "Change Photo" : "Upload NID Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      handlePhotoSelect(e.target.files?.[0], setNidPhoto, setNidPhotoName)
+                    }
+                  />
+                </label>
+                {nidPhoto && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <img
+                      src={nidPhoto}
+                      alt="NID preview"
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                    <span className="truncate text-xs text-muted-foreground">
+                      {nidPhotoName}
+                    </span>
+                    <button
+                      type="button"
+                      className="ml-auto text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setNidPhoto(null);
+                        setNidPhotoName("");
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </Field>
+
+              <Field label="Customer Photo">
+                <label className={buttonGhost + " w-full cursor-pointer justify-center"}>
+                  <Upload className="h-4 w-4" />
+                  {customerPhotoName ? "Change Photo" : "Upload Customer Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      handlePhotoSelect(e.target.files?.[0], setCustomerPhoto, setCustomerPhotoName)
+                    }
+                  />
+                </label>
+                {customerPhoto && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <img
+                      src={customerPhoto}
+                      alt="Customer preview"
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                    <span className="truncate text-xs text-muted-foreground">
+                      {customerPhotoName}
+                    </span>
+                    <button
+                      type="button"
+                      className="ml-auto text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setCustomerPhoto(null);
+                        setCustomerPhotoName("");
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </Field>
+
+              {photoError && (
+                <div className="md:col-span-2 text-xs text-red-600">{photoError}</div>
+              )}
             </div>
           </Card>
 
@@ -353,7 +627,11 @@ function BookingPage() {
   />
 </Field>
               <Field label="Payment Method">
-                <select className={selectClass}>
+                <select
+                  className={selectClass}
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
                   <option>Cash</option>
                   <option>bKash</option>
                   <option>Nagad</option>
@@ -406,7 +684,7 @@ function BookingPage() {
 
 <Row label="Estimated Total" value={`৳${totalRent}`} bold />
 
-<Row label="Advance" value={`৳${advance || 0}`} />
+<Row label="Advance" value={`৳${advancePayment || 0}`} />
 
 <Row label="Estimated Due" value={`৳${due}`} bold />
           </dl>
