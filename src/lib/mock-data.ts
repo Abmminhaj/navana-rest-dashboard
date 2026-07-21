@@ -105,22 +105,19 @@ export const customerHistory: CustomerRow[] = [
   { date: "2026-06-13", name: "Mahmudul Hasan", phone: "01811-665544", nid: "1989112233556", address: "Sylhet", room: "202", checkIn: "2026-06-10 14:45", checkOut: "2026-06-13 11:00", stay: "3 nights", rent: 16500, notes: "Family" },
 ];
 
+// Expense type now includes `id` (used for real storage via expense-storage.ts)
+// and optional `notes`. The old demo `expenses` array has been removed —
+// the Expenses page now reads real, user-entered data from localStorage,
+// same as Customer Information page.
 export interface Expense {
+  id: string;
   date: string;
   category: string;
   description: string;
   amount: number;
   method: string;
+  notes?: string;
 }
-
-export const expenses: Expense[] = [
-  { date: "2026-06-29", category: "Utilities", description: "Electricity bill — June", amount: 28500, method: "Bank Transfer" },
-  { date: "2026-06-28", category: "Maintenance", description: "AC servicing room 103, 304", amount: 6500, method: "Cash" },
-  { date: "2026-06-28", category: "Supplies", description: "Linens & toiletries restock", amount: 12400, method: "bKash" },
-  { date: "2026-06-27", category: "Salary", description: "Housekeeping weekly wages", amount: 35000, method: "Cash" },
-  { date: "2026-06-26", category: "Food & Beverage", description: "Kitchen supplies", amount: 9800, method: "Cash" },
-  { date: "2026-06-25", category: "Marketing", description: "Online listing renewal", amount: 4500, method: "Card" },
-];
 
 export const monthly = [
   { month: "Jan", income: 412000, expense: 248000 },
