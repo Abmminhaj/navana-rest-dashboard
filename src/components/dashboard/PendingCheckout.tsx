@@ -43,11 +43,19 @@ export default function PendingCheckout({ activeStays }: Props) {
               </div>
             </div>
 
-            <button className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+            <Link
+              to="/checkout"
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
               Checkout
-            </button>
+            </Link>
           </li>
         ))}
+        {activeStays.length === 0 && (
+          <li className="px-6 py-10 text-center text-sm text-muted-foreground">
+            No guests currently checked in.
+          </li>
+        )}
       </ul>
     </Card>
   );

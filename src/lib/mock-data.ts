@@ -12,27 +12,36 @@ export interface Room {
   status: RoomStatus;
   floor: number;
   rent: number;
+  amenities: string[];
+  notes?: string;
 }
 
 export const rooms: Room[] = [
-  { number: "101", type: "Deluxe", status: "Occupied", floor: 1, rent: 3500 },
-  { number: "102", type: "Standard", status: "Available", floor: 1, rent: 2500 },
-  { number: "103", type: "Standard", status: "Maintenance", floor: 1, rent: 2500 },
-  { number: "104", type: "Deluxe", status: "Occupied", floor: 1, rent: 3500 },
-  { number: "105", type: "Suite", status: "Cleaning", floor: 1, rent: 5500 },
-  { number: "106", type: "Standard", status: "Available", floor: 1, rent: 2500 },
-  { number: "201", type: "Deluxe", status: "Available", floor: 2, rent: 3500 },
-  { number: "202", type: "Suite", status: "Occupied", floor: 2, rent: 5500 },
-  { number: "203", type: "Standard", status: "Occupied", floor: 2, rent: 2500 },
-  { number: "204", type: "Deluxe", status: "Available", floor: 2, rent: 3500 },
-  { number: "205", type: "Standard", status: "Cleaning", floor: 2, rent: 2500 },
-  { number: "206", type: "Standard", status: "Occupied", floor: 2, rent: 2500 },
-  { number: "301", type: "Suite", status: "Occupied", floor: 3, rent: 5500 },
-  { number: "302", type: "Deluxe", status: "Available", floor: 3, rent: 3500 },
-  { number: "303", type: "Deluxe", status: "Occupied", floor: 3, rent: 3500 },
-  { number: "304", type: "Standard", status: "Maintenance", floor: 3, rent: 2500 },
-  { number: "305", type: "Standard", status: "Available", floor: 3, rent: 2500 },
-  { number: "306", type: "Suite", status: "Occupied", floor: 3, rent: 5500 },
+  { number: "101", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "102", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "103", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "104", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "105", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "106", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "107", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "108", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "109", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "201", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "202", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "203", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "204", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "205", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "206", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "207", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "208", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "209", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "210", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "211", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "212", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "213", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "214", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "215", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "216", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
 ];
 
 export interface ActiveStay {

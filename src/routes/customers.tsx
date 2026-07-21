@@ -80,6 +80,8 @@ function CustomersPage() {
   const [history, setHistory] = useState<CustomerHistoryRecord[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CustomerProfile | null>(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   useEffect(() => {
     setHistory(getCustomerHistory());
@@ -87,15 +89,66 @@ function CustomersPage() {
 
   const profiles = useMemo(() => buildProfiles(history), [history]);
 
-  const filtered = useMemo(
-    () =>
-      profiles.filter((p) =>
-        `${p.name} ${p.phone} ${p.nid} ${p.address}`
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      ),
-    [profiles, query]
-  );
+ const filtered = useMemo(() => {
+  return profiles.filter((p) => {
+    const textMatch = `${p.name} ${p.phone} ${p.nid} ${p.address}`
+      .toLowerCase()
+      .includes(query.toLowerCase());
+
+    if (!textMatch) return false;
+
+    if (!fromDate && !toDate) return true;
+
+    const visit = new Date(p.lastVisit);
+
+    if (fromDate && visit < new Date(fromDate)) return false;
+
+    if (toDate) {
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+
+      if (visit > end) return false;
+    }
+
+    return true;
+  });
+}, [profiles, query, fromDate, toDate]);
+
+function exportExcel() {
+  const rows = filtered.map((p) => ({
+    Name: p.name,
+    Phone: p.phone,
+    NID: p.nid,
+    Address: p.address,
+    LastVisit: p.lastVisit,
+    TotalStay: p.totalStays,
+    TotalSpent: p.totalSpent,
+  }));
+
+  const header = Object.keys(rows[0] || {});
+  const csv = [
+    header.join(","),
+    ...rows.map((r) =>
+      header.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `Customer_Report_${new Date()
+    .toISOString()
+    .slice(0, 10)}.csv`;
+
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
 
   return (
     <div>
@@ -116,6 +169,28 @@ function CustomersPage() {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
+            <div className="flex items-center gap-2">
+  <input
+    type="date"
+    value={fromDate}
+    onChange={(e) => setFromDate(e.target.value)}
+    className={inputClass}
+  />
+
+  <input
+    type="date"
+    value={toDate}
+    onChange={(e) => setToDate(e.target.value)}
+    className={inputClass}
+  />
+
+  <button
+    onClick={exportExcel}
+    className={buttonPrimary}
+  >
+    Download Report
+  </button>
+</div>
             <div className="text-xs text-muted-foreground">
               Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {profiles.length} guests
             </div>

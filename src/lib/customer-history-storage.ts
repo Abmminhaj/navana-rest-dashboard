@@ -1,5 +1,4 @@
 import type { ActiveStay } from "./mock-data";
-
 export interface CustomerHistoryRecord extends ActiveStay {
   checkoutDate: string;
   checkoutTime: string;

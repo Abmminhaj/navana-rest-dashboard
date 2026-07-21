@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Card, PageHeader, StatusPill, buttonGhost } from "@/components/ui-kit";
-import { type RoomStatus } from "@/lib/mock-data";
-import { getRooms, updateRoomStatus } from "@/lib/room-storage";
-import { X, BedDouble, Wifi, Tv, Wind, ShowerHead } from "lucide-react";
+import { type RoomStatus, type Room } from "@/lib/mock-data";
+import { getRooms, updateRoom, resetRoomsToDefault, addRoom, deleteRoom } from "@/lib/room-storage";
+import { X, BedDouble, Plus, RotateCcw, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/rooms")({
   head: () => ({ meta: [{ title: "Rooms — Navana Rest House" }] }),
   component: RoomsPage,
 });
+
+const ROOM_TYPE_PRESETS = ["Standard", "Deluxe", "Suite", "VIP"];
 
 const statusStyles: Record<
   RoomStatus,
@@ -47,7 +49,7 @@ const statusStyles: Record<
 
 function RoomsPage() {
   const [filter, setFilter] = useState<RoomStatus | "All">("All");
-  const [rooms, setRooms] = useState(getRooms());
+  const [rooms, setRooms] = useState<Room[]>([]);
 
 useEffect(() => {
   const loadRooms = () => {
@@ -64,15 +66,113 @@ useEffect(() => {
 }, []);
   const [selected, setSelected] = useState<typeof rooms[number] | null>(null);
   const [editStatus, setEditStatus] = useState<RoomStatus>("Available");
+  const [editType, setEditType] = useState("");
+  const [customType, setCustomType] = useState(false);
+  const [editRent, setEditRent] = useState(0);
+  const [editAmenities, setEditAmenities] = useState<string[]>([]);
+  const [newAmenity, setNewAmenity] = useState("");
   const [note, setNote] = useState("");
+
+  function openRoom(r: Room) {
+    setSelected(r);
+    setEditStatus(r.status);
+    setEditType(r.type);
+    setCustomType(!ROOM_TYPE_PRESETS.includes(r.type));
+    setEditRent(r.rent);
+    setEditAmenities(r.amenities || []);
+    setNewAmenity("");
+    setNote(r.notes || "");
+  }
+
+  function addAmenity() {
+    const trimmed = newAmenity.trim();
+    if (!trimmed) return;
+    if (!editAmenities.includes(trimmed)) {
+      setEditAmenities([...editAmenities, trimmed]);
+    }
+    setNewAmenity("");
+  }
+
+  function removeAmenity(a: string) {
+    setEditAmenities(editAmenities.filter((x) => x !== a));
+  }
 
   const handleSaveRoom = () => {
   if (!selected) return;
 
-  updateRoomStatus(selected.number, editStatus);
+  updateRoom(selected.number, {
+    status: editStatus,
+    type: editType.trim() || "Standard",
+    rent: Number(editRent) || 0,
+    amenities: editAmenities,
+    notes: note,
+  });
 
   setSelected(null);
 };
+
+  function handleDeleteRoom() {
+    if (!selected) return;
+
+    if (selected.status === "Occupied") {
+      alert("এই Room-এ এখন Guest আছে। আগে Checkout করাও, তারপর Room Delete করতে পারবে।");
+      return;
+    }
+
+    const ok = window.confirm(
+      `Room ${selected.number} মুছে ফেলতে চাও? এই কাজ Undo করা যাবে না।`
+    );
+    if (!ok) return;
+
+    deleteRoom(selected.number);
+    setSelected(null);
+  }
+
+  function handleResetRooms() {
+    const ok = window.confirm(
+      "এটি বর্তমান সব Room-এর Status/Type/Amenities মুছে দিয়ে আসল ২৫টা Room (101-109, 201-216) দিয়ে নতুন করে শুরু করবে। আপনি কি নিশ্চিত?"
+    );
+    if (!ok) return;
+
+    resetRoomsToDefault();
+  }
+
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [newNumber, setNewNumber] = useState("");
+  const [newFloor, setNewFloor] = useState(1);
+  const [newType, setNewType] = useState("Standard");
+  const [newCustomType, setNewCustomType] = useState(false);
+  const [newRent, setNewRent] = useState(2500);
+  const [addError, setAddError] = useState("");
+
+  function handleAddRoom() {
+    const number = newNumber.trim();
+    if (!number) {
+      setAddError("Room Number দিতে হবে");
+      return;
+    }
+
+    try {
+      addRoom({
+        number,
+        type: newType.trim() || "Standard",
+        status: "Available",
+        floor: Number(newFloor) || 1,
+        rent: Number(newRent) || 0,
+        amenities: [],
+      });
+
+      setShowAddRoom(false);
+      setNewNumber("");
+      setNewFloor(1);
+      setNewType("Standard");
+      setNewCustomType(false);
+      setNewRent(2500);
+      setAddError("");
+    } catch {
+      setAddError("এই Room Number আগে থেকেই আছে, অন্য একটা নম্বর দাও।");
+    }
+  }
 
   const summary = {
     total: rooms.length,
@@ -90,7 +190,23 @@ useEffect(() => {
 
   return (
     <div>
-      <PageHeader title="Rooms" description="Real-time inventory across all floors." />
+      <PageHeader
+        title="Rooms"
+        description="Real-time inventory across all floors."
+        actions={
+          <div className="flex items-center gap-2">
+            <button onClick={handleResetRooms} className={buttonGhost}>
+              <RotateCcw className="h-4 w-4" /> Reset to Default 25 Rooms
+            </button>
+            <button
+              onClick={() => setShowAddRoom(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" /> Add Room
+            </button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat label="Total Rooms" value={summary.total} accent="bg-primary-soft text-primary" />
@@ -126,11 +242,7 @@ useEffect(() => {
                 return (
                   <button
                     key={r.number}
-                    onClick={() => {
-                    setSelected(r);
-                    setEditStatus(r.status);
-                    setNote("");
-                    }}
+                    onClick={() => openRoom(r)}
                     className={`group rounded-xl border p-4 text-left transition ${s.bg}`}
                   >
                     <div className="flex items-start justify-between">
@@ -168,6 +280,46 @@ useEffect(() => {
               </button>
             </div>
             <div className="space-y-4 p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Room Type</label>
+                  <select
+                    value={customType ? "__custom__" : editType}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomType(true);
+                        setEditType("");
+                      } else {
+                        setCustomType(false);
+                        setEditType(e.target.value);
+                      }
+                    }}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                  >
+                    {ROOM_TYPE_PRESETS.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                    <option value="__custom__">Custom (নিজে লিখুন)</option>
+                  </select>
+                  {customType && (
+                    <input
+                      value={editType}
+                      onChange={(e) => setEditType(e.target.value)}
+                      placeholder="Room Type লিখো"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                    />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Nightly Rate (৳)</label>
+                  <input
+                    type="number"
+                    value={editRent}
+                    onChange={(e) => setEditRent(Number(e.target.value))}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
   <label className="text-sm font-medium text-foreground">
     Room Status
@@ -200,38 +352,162 @@ useEffect(() => {
     className="w-full rounded-lg border border-border bg-background px-3 py-2"
   />
 </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Nightly Rate</span>
-                <span className="text-base font-bold text-foreground">৳{selected.rent.toLocaleString()}</span>
-              </div>
               <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amenities</div>
-                <div className="flex flex-wrap gap-2">
-                  {[{ i: Wifi, l: "Wi-Fi" }, { i: Tv, l: "Smart TV" }, { i: Wind, l: "AC" }, { i: ShowerHead, l: "Hot Shower" }].map((a, i) => (
-                    <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
-                      <a.i className="h-3.5 w-3.5" />{a.l}
+                <label className="text-sm font-medium text-foreground">Amenities / Facilities</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {editAmenities.map((a) => (
+                    <span key={a} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
+                      {a}
+                      <button
+                        type="button"
+                        onClick={() => removeAmenity(a)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </span>
                   ))}
+                  {editAmenities.length === 0 && (
+                    <span className="text-xs text-muted-foreground">এখনো কোনো Amenity যোগ করা হয়নি</span>
+                  )}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={newAmenity}
+                    onChange={(e) => setNewAmenity(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addAmenity();
+                      }
+                    }}
+                    placeholder="e.g. AC, Wi-Fi, Balcony"
+                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={addAmenity}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+                  >
+                    <Plus className="h-4 w-4" /> Add
+                  </button>
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+            <div className="flex items-center justify-between border-t border-border px-6 py-4">
 
   <button
-    onClick={() => setSelected(null)}
-    className={buttonGhost}
+    onClick={handleDeleteRoom}
+    className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"
   >
-    Close
+    <Trash2 className="h-4 w-4" /> Delete Room
   </button>
 
-  <button
-    onClick={handleSaveRoom}
-    className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
-  >
-    Save Changes
-  </button>
+  <div className="flex gap-2">
+    <button
+      onClick={() => setSelected(null)}
+      className={buttonGhost}
+    >
+      Close
+    </button>
+
+    <button
+      onClick={handleSaveRoom}
+      className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
+    >
+      Save Changes
+    </button>
+  </div>
 
 </div>
+          </div>
+        </div>
+      )}
+
+      {showAddRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h3 className="text-base font-bold text-foreground">Add New Room</h3>
+              <button
+                onClick={() => setShowAddRoom(false)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-4 p-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Room Number</label>
+                <input
+                  value={newNumber}
+                  onChange={(e) => setNewNumber(e.target.value)}
+                  placeholder="e.g. 217"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Floor</label>
+                  <input
+                    type="number"
+                    value={newFloor}
+                    onChange={(e) => setNewFloor(Number(e.target.value))}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Nightly Rate (৳)</label>
+                  <input
+                    type="number"
+                    value={newRent}
+                    onChange={(e) => setNewRent(Number(e.target.value))}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Room Type</label>
+                <select
+                  value={newCustomType ? "__custom__" : newType}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setNewCustomType(true);
+                      setNewType("");
+                    } else {
+                      setNewCustomType(false);
+                      setNewType(e.target.value);
+                    }
+                  }}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                >
+                  {ROOM_TYPE_PRESETS.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                  <option value="__custom__">Custom (নিজে লিখুন)</option>
+                </select>
+                {newCustomType && (
+                  <input
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value)}
+                    placeholder="Room Type লিখো"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                  />
+                )}
+              </div>
+              {addError && <p className="text-xs text-red-600">{addError}</p>}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+              <button onClick={() => setShowAddRoom(false)} className={buttonGhost}>
+                Cancel
+              </button>
+              <button
+                onClick={handleAddRoom}
+                className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
+              >
+                Add Room
+              </button>
+            </div>
           </div>
         </div>
       )}

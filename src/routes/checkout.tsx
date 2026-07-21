@@ -24,7 +24,7 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function CheckoutPage() {
-  const [list, setList] = useState<ActiveStay[]>(getActiveStays());
+  const [list, setList] = useState<ActiveStay[]>([]);
   const [active, setActive] = useState<ActiveStay | null>(null);
   const [query, setQuery] = useState("");
   const [checkoutDate, setCheckoutDate] = useState(new Date().toISOString().slice(0, 10));
