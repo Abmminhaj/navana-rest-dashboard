@@ -27,9 +27,23 @@ function CheckoutPage() {
   const [list, setList] = useState<ActiveStay[]>(getActiveStays());
   const [active, setActive] = useState<ActiveStay | null>(null);
   const [query, setQuery] = useState("");
+  const [checkoutDate, setCheckoutDate] = useState(new Date().toISOString().slice(0, 10));
+  const [checkoutTime, setCheckoutTime] = useState("12:00");
+  const [remainingPayment, setRemainingPayment] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [checkoutNotes, setCheckoutNotes] = useState("");
   useEffect(() => {
   setList(getActiveStays());
 }, []);
+
+  function openCheckout(stay: ActiveStay) {
+    setActive(stay);
+    setCheckoutDate(new Date().toISOString().slice(0, 10));
+    setCheckoutTime("12:00");
+    setRemainingPayment(stay.remaining);
+    setPaymentMethod("Cash");
+    setCheckoutNotes("");
+  }
 
   const filtered = list.filter(
     (s) =>
@@ -97,7 +111,7 @@ function CheckoutPage() {
                   <td className="px-4 py-3 text-right font-medium text-foreground">৳{s.advance.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right font-bold text-rose-600">৳{s.remaining.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => setActive(s)} className={buttonPrimary + " h-8 px-3 text-xs"}>
+                    <button onClick={() => openCheckout(s)} className={buttonPrimary + " h-8 px-3 text-xs"}>
                       <LogOut className="h-3.5 w-3.5" /> Checkout
                     </button>
                   </td>
@@ -129,28 +143,52 @@ function CheckoutPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Checkout Date">
-                <input type="date" className={inputClass} defaultValue="2026-06-29" />
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={checkoutDate}
+                  onChange={(e) => setCheckoutDate(e.target.value)}
+                />
               </Field>
               <Field label="Checkout Time">
-                <input type="time" className={inputClass} defaultValue="12:00" />
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={checkoutTime}
+                  onChange={(e) => setCheckoutTime(e.target.value)}
+                />
               </Field>
               <Field label="Remaining Payment">
-                <input className={inputClass} defaultValue={active.remaining} />
+                <input
+                  type="number"
+                  className={inputClass}
+                  value={remainingPayment}
+                  onChange={(e) => setRemainingPayment(Number(e.target.value))}
+                />
               </Field>
               <Field label="Payment Method">
-                <select className={selectClass}>
+                <select
+                  className={selectClass}
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
                   <option>Cash</option><option>bKash</option><option>Nagad</option><option>Card</option><option>Bank Transfer</option>
                 </select>
               </Field>
               <div className="md:col-span-2">
                 <Field label="Notes">
-                  <textarea className={textareaClass} placeholder="Damage charges, late check-out fee, etc." />
+                  <textarea
+                    className={textareaClass}
+                    placeholder="Damage charges, late check-out fee, etc."
+                    value={checkoutNotes}
+                    onChange={(e) => setCheckoutNotes(e.target.value)}
+                  />
                 </Field>
               </div>
               <div className="md:col-span-2 rounded-xl bg-primary-soft p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Total Settled</span>
-                  <span className="text-lg font-bold text-primary">৳{(active.advance + active.remaining).toLocaleString()}</span>
+                  <span className="text-lg font-bold text-primary">৳{(active.advance + remainingPayment).toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -160,8 +198,11 @@ function CheckoutPage() {
                onClick={() => {
   saveCustomerHistory({
     ...active,
-    checkoutDate: new Date().toLocaleDateString(),
-    checkoutTime: new Date().toLocaleTimeString(),
+    remaining: remainingPayment,
+    paymentMethod,
+    checkoutNotes,
+    checkoutDate,
+    checkoutTime,
   });
 
   removeActiveStay(active.id);

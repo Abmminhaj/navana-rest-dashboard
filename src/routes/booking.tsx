@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Save, User, BedDouble, CreditCard, Search, Upload, X } from "lucide-react";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
-import { customerHistory, type Room } from "@/lib/mock-data";
-import { saveBooking } from "@/lib/booking-storage";
+import { type Room } from "@/lib/mock-data";
+import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
+import { divisions, getDistrictsByDivision, getUpazilasByDistrict } from "@/lib/bd-locations";
+import { saveBooking, getBookings } from "@/lib/booking-storage";
 import { getRooms, occupyRoom, refreshRooms } from "@/lib/room-storage";
 import { saveActiveStay } from "@/lib/stay-storage";
-import { divisions, getDistrictsByDivision, getUpazilasByDistrict } from "@/lib/bd-locations";
 
 const MIN_PHOTO_SIZE_BYTES = 10 * 1024; // 10KB minimum
 
@@ -79,6 +80,17 @@ function BookingPage() {
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [showSuggestion, setShowSuggestion] = useState(true);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [customerHistory, setCustomerHistory] = useState<CustomerHistoryRecord[]>([]);
+  const [bookingId, setBookingId] = useState("");
+
+  function generateBookingId() {
+    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const todaysCount = getBookings().filter(
+      (b: any) => typeof b.bookingId === "string" && b.bookingId.startsWith(`NRH-${todayStr}-`)
+    ).length;
+    const nextSeq = String(todaysCount + 1).padStart(4, "0");
+    return `NRH-${todayStr}-${nextSeq}`;
+  }
 
   const availableDistricts = useMemo(
     () => (divisionId ? getDistrictsByDivision(divisionId) : []),
@@ -113,6 +125,8 @@ function BookingPage() {
 
   useEffect(() => {
     setRooms(getRooms());
+    setCustomerHistory(getCustomerHistory());
+    setBookingId(generateBookingId());
 
     function handleRoomsUpdated() {
       setRooms(getRooms());
@@ -123,9 +137,15 @@ function BookingPage() {
   }, []);
 
   const suggestion = useMemo(() => {
-    if (phone.length < 4) return null;
-    return customerHistory.find((c) => c.phone.replace(/\D/g, "").includes(phone.replace(/\D/g, "")));
-  }, [phone]);
+    if (phone.replace(/\D/g, "").length < 4) return null;
+
+    const digits = phone.replace(/\D/g, "");
+    const matches = customerHistory
+      .filter((c) => c.phone.replace(/\D/g, "").includes(digits))
+      .sort((a, b) => new Date(b.checkoutDate).getTime() - new Date(a.checkoutDate).getTime());
+
+    return matches[0] || null;
+  }, [phone, customerHistory]);
 
   const availableRooms = rooms.filter((r) => r.status === "Available");
   const roomInfo = availableRooms.find(
@@ -149,10 +169,7 @@ function BookingPage() {
 
   const due =
   totalRent - (Number(advancePayment) || 0);
-  
-  const bookingId = "NRH-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-0001";
-  
- 
+
   function handleSaveBooking() {
   const bookingData = {
     bookingId,
@@ -189,14 +206,25 @@ function BookingPage() {
     id: Date.now().toString(),
     room: selectedRoom,
     customer: customerName,
+    fatherName,
     phone,
     nid,
+    profession,
+    nationality,
     address: fullAddress,
+    divisionId,
+    districtId,
+    upazilaId,
+    village,
+    houseRoad,
     checkIn: new Date().toLocaleDateString(),
     expectedCheckOut: checkOutDate,
     rent: Number(roomRent) || 0,
     advance: Number(advancePayment || 0),
     remaining: due,
+    nidPhoto,
+    customerPhoto,
+    notes,
   };
 
   saveBooking(bookingData);
@@ -206,7 +234,42 @@ function BookingPage() {
 
   console.log("Booking Saved:", bookingData);
 
-  alert("Booking data captured successfully!");
+  alert(`Booking ${bookingId} saved successfully! Form cleared for the next guest.`);
+
+  resetForm();
+}
+
+function resetForm() {
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  setPhone("");
+  setSelectedRoom("");
+  setGuestType("Walk-in Guest");
+  setAdvancePayment(0);
+  setNotes("");
+  setRoomRent("");
+  setDiscount("");
+  setCheckInDate(today);
+  setCheckOutDate(tomorrow);
+  setCustomerName("");
+  setFatherName("");
+  setNid("");
+  setProfession("");
+  setNationality("Bangladeshi");
+  setDivisionId("");
+  setDistrictId("");
+  setUpazilaId("");
+  setVillage("");
+  setHouseRoad("");
+  setNidPhoto(null);
+  setNidPhotoName("");
+  setCustomerPhoto(null);
+  setCustomerPhotoName("");
+  setPhotoError("");
+  setPaymentMethod("Cash");
+  setShowSuggestion(true);
+  setBookingId(generateBookingId());
 }
 
   return (
@@ -286,7 +349,7 @@ function BookingPage() {
   <div className="grid grid-cols-2 gap-y-2 text-sm">
 
     <span className="font-medium">Name</span>
-    <span>{suggestion.name}</span>
+    <span>{suggestion.customer}</span>
 
     <span className="font-medium">Phone</span>
     <span>{suggestion.phone}</span>
@@ -316,13 +379,10 @@ function BookingPage() {
     <span className="font-medium">Check In</span>
     <span>{suggestion.checkIn}</span>
 
-    <span className="font-medium">Check Out</span>
-    <span>{suggestion.checkOut}</span>
+    <span className="font-medium">Checked Out</span>
+    <span>{suggestion.checkoutDate}</span>
 
-    <span className="font-medium">Stayed</span>
-    <span>{suggestion.stay}</span>
-
-    <span className="font-medium">Rent</span>
+    <span className="font-medium">Room Rent</span>
     <span>৳{suggestion.rent}</span>
 
   </div>
@@ -332,10 +392,17 @@ function BookingPage() {
     onClick={() => {
       if (!suggestion) return;
 
-      setCustomerName(suggestion.name);
+      setCustomerName(suggestion.customer);
       setPhone(suggestion.phone);
       setNid(suggestion.nid);
-      setVillage(suggestion.address);
+      setFatherName(suggestion.fatherName || "");
+      setProfession(suggestion.profession || "");
+      setNationality(suggestion.nationality || "Bangladeshi");
+      setDivisionId(suggestion.divisionId || "");
+      setDistrictId(suggestion.districtId || "");
+      setUpazilaId(suggestion.upazilaId || "");
+      setVillage(suggestion.village || suggestion.address || "");
+      setHouseRoad(suggestion.houseRoad || "");
       setShowSuggestion(false);
     }}
   >

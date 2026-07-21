@@ -39,14 +39,25 @@ export interface ActiveStay {
   id: string;
   room: string;
   customer: string;
+  fatherName?: string;
   phone: string;
   nid: string;
+  profession?: string;
+  nationality?: string;
   address: string;
+  divisionId?: string;
+  districtId?: string;
+  upazilaId?: string;
+  village?: string;
+  houseRoad?: string;
   checkIn: string;
   expectedCheckOut: string;
   rent: number;
   advance: number;
   remaining: number;
+  nidPhoto?: string | null;
+  customerPhoto?: string | null;
+  notes?: string;
 }
 
 export const activeStays: ActiveStay[] = [

@@ -120,7 +120,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background">
-        <TopNav />
+        <TopNav className="print:hidden" />
         <main className="mx-auto max-w-[1400px] px-6 py-8">
           <Outlet />
         </main>

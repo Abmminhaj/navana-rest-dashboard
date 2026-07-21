@@ -1,6 +1,15 @@
+import type { ActiveStay } from "./mock-data";
+
+export interface CustomerHistoryRecord extends ActiveStay {
+  checkoutDate: string;
+  checkoutTime: string;
+  paymentMethod?: string;
+  checkoutNotes?: string;
+}
+
 const STORAGE_KEY = "navana_customer_history";
 
-export function getCustomerHistory() {
+export function getCustomerHistory(): CustomerHistoryRecord[] {
   const data = localStorage.getItem(STORAGE_KEY);
 
   if (!data) return [];
@@ -8,7 +17,7 @@ export function getCustomerHistory() {
   return JSON.parse(data);
 }
 
-export function saveCustomerHistory(customer: any) {
+export function saveCustomerHistory(customer: CustomerHistoryRecord) {
   const history = getCustomerHistory();
 
   history.push(customer);

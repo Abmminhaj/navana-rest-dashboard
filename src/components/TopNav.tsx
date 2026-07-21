@@ -12,9 +12,9 @@ const navItems = [
   { to: "/settings", label: "Settings" },
 ] as const;
 
-export function TopNav() {
+export function TopNav({ className = "" }: { className?: string }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur">
+    <header className={"sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur " + className}>
       <div className="mx-auto max-w-[1400px] px-6">
         <div className="flex h-16 items-center justify-between gap-6">
           <div className="flex items-center gap-3">
