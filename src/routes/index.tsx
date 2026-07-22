@@ -16,7 +16,8 @@ import { getRooms } from "@/lib/room-storage";
 import { getActiveStays } from "@/lib/stay-storage";
 import { getBookings } from "@/lib/booking-storage";
 import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
-import { getExpenses, getTodayExpenseTotal } from "@/lib/expense-storage";
+import { getExpenses } from "@/lib/expense-storage";
+import { getAdminDisplayName } from "@/lib/settings-storage";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -108,6 +109,7 @@ function Dashboard() {
   const [history, setHistory] = useState<CustomerHistoryRecord[]>([]);
   const [expenses, setExpenses] = useState<ReturnType<typeof getExpenses>>([]);
   const [today, setToday] = useState("");
+  const [adminName, setAdminName] = useState("Arif");
 
   useEffect(() => {
     function loadAll() {
@@ -116,6 +118,7 @@ function Dashboard() {
       setBookings(getBookings());
       setHistory(getCustomerHistory());
       setExpenses(getExpenses());
+      setAdminName(getAdminDisplayName());
       setToday(todayISO());
     }
 
@@ -123,9 +126,11 @@ function Dashboard() {
 
     window.addEventListener("roomsUpdated", loadAll);
     window.addEventListener("expensesUpdated", loadAll);
+    window.addEventListener("settingsUpdated", loadAll);
     return () => {
       window.removeEventListener("roomsUpdated", loadAll);
       window.removeEventListener("expensesUpdated", loadAll);
+      window.removeEventListener("settingsUpdated", loadAll);
     };
   }, []);
 
@@ -146,7 +151,9 @@ function Dashboard() {
     todaysBookings.reduce((sum, b) => sum + (Number(b.advancePayment) || 0), 0) +
     todaysCheckouts.reduce((sum, r) => sum + (Number(r.remaining) || 0), 0);
 
-  const todaysExpense = getTodayExpenseTotal();
+  const todaysExpense = expenses
+    .filter((e) => e.date === today)
+    .reduce((sum, e) => sum + e.amount, 0);
   const todaysProfit = todaysIncome - todaysExpense;
 
   const monthlyFinancials = useMonthlyFinancials(bookings, history, expenses);
@@ -231,7 +238,7 @@ function Dashboard() {
   return (
     <div>
       <PageHeader
-        title="Good morning, Arif 👋"
+        title={`Good morning, ${adminName} 👋`}
         description={`Here's what's happening at Navana Rest House today${todayLabel ? ` — ${todayLabel}` : ""}.`}
         actions={
           <Link to="/booking" className={buttonPrimary}>
