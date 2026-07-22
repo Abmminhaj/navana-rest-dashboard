@@ -23,7 +23,12 @@ interface CustomerProfile {
   records: CustomerHistoryRecord[];
   totalStays: number;
   totalSpent: number;
+  outstandingDue: number;
   lastVisit: string;
+}
+
+function depositsTotalOf(r: CustomerHistoryRecord) {
+  return (r.deposits || []).reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
 }
 
 function parseDate(value: string | undefined) {
@@ -51,9 +56,10 @@ function buildProfiles(history: CustomerHistoryRecord[]): CustomerProfile[] {
     const nidPhoto = sorted.find((r) => r.nidPhoto)?.nidPhoto ?? null;
     const customerPhoto = sorted.find((r) => r.customerPhoto)?.customerPhoto ?? null;
     const totalSpent = sorted.reduce(
-      (sum, r) => sum + (Number(r.advance) || 0) + (Number(r.remaining) || 0),
+      (sum, r) => sum + (Number(r.advance) || 0) + depositsTotalOf(r) + (Number(r.remaining) || 0),
       0
     );
+    const outstandingDue = Number(latest.due) || 0;
 
     profiles.push({
       key,
@@ -69,6 +75,7 @@ function buildProfiles(history: CustomerHistoryRecord[]): CustomerProfile[] {
       records: sorted,
       totalStays: sorted.length,
       totalSpent,
+      outstandingDue,
       lastVisit: latest.checkoutDate,
     });
   });
@@ -123,6 +130,7 @@ function exportExcel() {
     LastVisit: p.lastVisit,
     TotalStay: p.totalStays,
     TotalSpent: p.totalSpent,
+    OutstandingDue: p.outstandingDue,
   }));
 
   const header = Object.keys(rows[0] || {});
@@ -207,6 +215,7 @@ function exportExcel() {
                   <th className="px-4 py-3">Address</th>
                   <th className="px-4 py-3 text-right">Total Stays</th>
                   <th className="px-4 py-3 text-right">Total Spent</th>
+                  <th className="px-4 py-3 text-right">Due</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,11 +236,18 @@ function exportExcel() {
                     <td className="px-4 py-3 text-right font-semibold text-foreground">
                       ৳{p.totalSpent.toLocaleString()}
                     </td>
+                    <td className="px-4 py-3 text-right font-semibold">
+                      {p.outstandingDue > 0 ? (
+                        <span className="text-amber-600">৳{p.outstandingDue.toLocaleString()}</span>
+                      ) : (
+                        <span className="text-emerald-600">৳0</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-16 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-16 text-center text-sm text-muted-foreground">
                       {profiles.length === 0
                         ? "এখনো কোনো Guest Checkout সম্পন্ন হয়নি। Checkout সম্পন্ন হলে এখানে Customer History দেখা যাবে।"
                         : "No matching guests found."}
@@ -252,6 +268,9 @@ function exportExcel() {
                 <div>
                   <h3 className="text-base font-bold text-foreground">{selected.name}</h3>
                   <p className="text-xs text-muted-foreground">{selected.phone} · {selected.totalStays} stay(s)</p>
+                  {selected.outstandingDue > 0 && (
+                    <p className="mt-1 text-sm font-bold text-amber-600">⚠️ বকেয়া আছে: ৳{selected.outstandingDue.toLocaleString()}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => window.print()} className={buttonGhost}>
@@ -339,30 +358,45 @@ function exportExcel() {
                         <tr>
                           <th className="px-3 py-2">Checkout Date</th>
                           <th className="px-3 py-2 text-right">Advance</th>
-                          <th className="px-3 py-2 text-right">Remaining Paid</th>
+                          <th className="px-3 py-2 text-right">Deposits</th>
+                          <th className="px-3 py-2 text-right">Paid at Checkout</th>
                           <th className="px-3 py-2 text-right">Total Paid</th>
+                          <th className="px-3 py-2 text-right">Due Left</th>
                           <th className="px-3 py-2">Method</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selected.records.map((r, i) => (
+                        {selected.records.map((r, i) => {
+                          const dep = depositsTotalOf(r);
+                          return (
                           <tr key={i} className="border-t border-border">
                             <td className="px-3 py-2 text-muted-foreground">{r.checkoutDate}</td>
                             <td className="px-3 py-2 text-right text-foreground">৳{(Number(r.advance) || 0).toLocaleString()}</td>
+                            <td className="px-3 py-2 text-right text-foreground">৳{dep.toLocaleString()}</td>
                             <td className="px-3 py-2 text-right text-foreground">৳{(Number(r.remaining) || 0).toLocaleString()}</td>
                             <td className="px-3 py-2 text-right font-semibold text-foreground">
-                              ৳{((Number(r.advance) || 0) + (Number(r.remaining) || 0)).toLocaleString()}
+                              ৳{((Number(r.advance) || 0) + dep + (Number(r.remaining) || 0)).toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold">
+                              {(Number(r.due) || 0) > 0 ? (
+                                <span className="text-amber-600">৳{(Number(r.due) || 0).toLocaleString()}</span>
+                              ) : (
+                                <span className="text-emerald-600">৳0</span>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-muted-foreground">{r.paymentMethod || "—"}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-border bg-muted/20">
                           <td className="px-3 py-2 font-semibold text-foreground">Total</td>
                           <td className="px-3 py-2" />
                           <td className="px-3 py-2" />
+                          <td className="px-3 py-2" />
                           <td className="px-3 py-2 text-right font-bold text-primary">৳{selected.totalSpent.toLocaleString()}</td>
+                          <td className="px-3 py-2" />
                           <td className="px-3 py-2" />
                         </tr>
                       </tfoot>
@@ -452,27 +486,37 @@ function exportExcel() {
                     <tr className="border-b border-gray-400 text-left">
                       <th className="py-1 pr-6">Checkout Date</th>
                       <th className="py-1 pr-6 text-right">Advance</th>
-                      <th className="py-1 pr-6 text-right">Remaining</th>
+                      <th className="py-1 pr-6 text-right">Deposits</th>
+                      <th className="py-1 pr-6 text-right">Paid at Checkout</th>
                       <th className="py-1 pr-6 text-right">Total</th>
+                      <th className="py-1 pr-6 text-right">Due Left</th>
                       <th className="py-1">Method</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selected.records.map((r, i) => (
+                    {selected.records.map((r, i) => {
+                      const dep = depositsTotalOf(r);
+                      return (
                       <tr key={i} className="border-b border-gray-200">
                         <td className="py-1 pr-6">{r.checkoutDate}</td>
                         <td className="py-1 pr-6 text-right">৳{(Number(r.advance) || 0).toLocaleString()}</td>
+                        <td className="py-1 pr-6 text-right">৳{dep.toLocaleString()}</td>
                         <td className="py-1 pr-6 text-right">৳{(Number(r.remaining) || 0).toLocaleString()}</td>
-                        <td className="py-1 pr-6 text-right">৳{((Number(r.advance) || 0) + (Number(r.remaining) || 0)).toLocaleString()}</td>
+                        <td className="py-1 pr-6 text-right">৳{((Number(r.advance) || 0) + dep + (Number(r.remaining) || 0)).toLocaleString()}</td>
+                        <td className="py-1 pr-6 text-right">৳{(Number(r.due) || 0).toLocaleString()}</td>
                         <td className="py-1">{r.paymentMethod || "—"}</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr className="font-bold">
                       <td className="py-1 pr-6">Grand Total</td>
-                      <td /><td />
+                      <td /><td /><td />
                       <td className="py-1 pr-6 text-right">৳{selected.totalSpent.toLocaleString()}</td>
+                      <td className="py-1 pr-6 text-right">
+                        {selected.outstandingDue > 0 ? `৳${selected.outstandingDue.toLocaleString()}` : "৳0"}
+                      </td>
                       <td />
                     </tr>
                   </tfoot>

@@ -64,6 +64,8 @@ export interface ActiveStay {
   rent: number;
   advance: number;
   remaining: number;
+  deposits?: { amount: number; date: string }[];
+  previousDue?: number;
   nidPhoto?: string | null;
   customerPhoto?: string | null;
   notes?: string;

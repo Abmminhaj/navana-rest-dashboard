@@ -11,6 +11,19 @@ import { saveActiveStay } from "@/lib/stay-storage";
 
 const MIN_PHOTO_SIZE_BYTES = 10 * 1024; // 10KB minimum
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function tomorrowISO() {
+  return new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+}
+
+function nowHHMM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 function compressImage(file: File, maxDimension = 1000, quality = 0.75): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -60,8 +73,10 @@ function BookingPage() {
   const [notes, setNotes] = useState("");
   const [roomRent, setRoomRent] = useState("");
   const [discount, setDiscount] = useState("");
-  const [checkInDate, setCheckInDate] = useState("2026-06-29");
-  const [checkOutDate, setCheckOutDate] = useState("2026-06-30");
+  const [checkInDate, setCheckInDate] = useState(todayISO());
+  const [checkInTime, setCheckInTime] = useState(nowHHMM());
+  const [checkOutDate, setCheckOutDate] = useState(tomorrowISO());
+  const [checkOutTime, setCheckOutTime] = useState("12:00");
   const [customerName, setCustomerName] = useState("");
   const [fatherName, setFatherName] = useState("");
   const [nid, setNid] = useState("");
@@ -79,6 +94,7 @@ function BookingPage() {
   const [photoError, setPhotoError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [showSuggestion, setShowSuggestion] = useState(true);
+  const [previousDue, setPreviousDue] = useState(0);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [customerHistory, setCustomerHistory] = useState<CustomerHistoryRecord[]>([]);
   const [bookingId, setBookingId] = useState("");
@@ -168,7 +184,7 @@ function BookingPage() {
   (Number(roomRent) || 0) * nights - (Number(discount) || 0);
 
   const due =
-  totalRent - (Number(advancePayment) || 0);
+  totalRent - (Number(advancePayment) || 0) + (Number(previousDue) || 0);
 
   function handleSaveBooking() {
   const bookingData = {
@@ -217,11 +233,12 @@ function BookingPage() {
     upazilaId,
     village,
     houseRoad,
-    checkIn: new Date().toLocaleDateString(),
+    checkIn: checkInDate,
     expectedCheckOut: checkOutDate,
     rent: Number(roomRent) || 0,
     advance: Number(advancePayment || 0),
     remaining: due,
+    previousDue,
     nidPhoto,
     customerPhoto,
     notes,
@@ -240,9 +257,6 @@ function BookingPage() {
 }
 
 function resetForm() {
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-
   setPhone("");
   setSelectedRoom("");
   setGuestType("Walk-in Guest");
@@ -250,8 +264,10 @@ function resetForm() {
   setNotes("");
   setRoomRent("");
   setDiscount("");
-  setCheckInDate(today);
-  setCheckOutDate(tomorrow);
+  setCheckInDate(todayISO());
+  setCheckInTime(nowHHMM());
+  setCheckOutDate(tomorrowISO());
+  setCheckOutTime("12:00");
   setCustomerName("");
   setFatherName("");
   setNid("");
@@ -269,6 +285,7 @@ function resetForm() {
   setPhotoError("");
   setPaymentMethod("Cash");
   setShowSuggestion(true);
+  setPreviousDue(0);
   setBookingId(generateBookingId());
 }
 
@@ -387,6 +404,12 @@ function resetForm() {
 
   </div>
 
+  {(suggestion.due || 0) > 0 && (
+    <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+      ⚠️ আগের বকেয়া আছে: ৳{(suggestion.due || 0).toLocaleString()}
+    </div>
+  )}
+
   <button
     className={buttonPrimary + " mt-5 w-full"}
     onClick={() => {
@@ -403,6 +426,7 @@ function resetForm() {
       setUpazilaId(suggestion.upazilaId || "");
       setVillage(suggestion.village || suggestion.address || "");
       setHouseRoad(suggestion.houseRoad || "");
+      setPreviousDue(suggestion.due || 0);
       setShowSuggestion(false);
     }}
   >
@@ -648,7 +672,12 @@ function resetForm() {
 />
               </Field>
               <Field label="Check-in Time">
-                <input type="time" className={inputClass} defaultValue="14:00" />
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={checkInTime}
+                  onChange={(e) => setCheckInTime(e.target.value)}
+                />
               </Field>
               <Field label="Expected Check-out Date">
                 <input
@@ -659,7 +688,12 @@ function resetForm() {
 />
               </Field>
               <Field label="Expected Check-out Time">
-                <input type="time" className={inputClass} defaultValue="12:00" />
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={checkOutTime}
+                  onChange={(e) => setCheckOutTime(e.target.value)}
+                />
               </Field>
             </div>
           </Card>
@@ -752,6 +786,10 @@ function resetForm() {
 <Row label="Estimated Total" value={`৳${totalRent}`} bold />
 
 <Row label="Advance" value={`৳${advancePayment || 0}`} />
+
+{previousDue > 0 && (
+  <Row label="আগের বকেয়া (Carried)" value={`৳${previousDue.toLocaleString()}`} />
+)}
 
 <Row label="Estimated Due" value={`৳${due}`} bold />
           </dl>

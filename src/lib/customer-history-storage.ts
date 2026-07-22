@@ -4,6 +4,8 @@ export interface CustomerHistoryRecord extends ActiveStay {
   checkoutTime: string;
   paymentMethod?: string;
   checkoutNotes?: string;
+  actualNights?: number;
+  due?: number;
 }
 
 const STORAGE_KEY = "navana_customer_history";

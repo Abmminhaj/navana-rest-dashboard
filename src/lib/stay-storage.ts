@@ -31,3 +31,24 @@ export function removeActiveStay(id: string) {
     JSON.stringify(stays)
   );
 }
+
+export function addDeposit(id: string, amount: number) {
+  const stays = getActiveStays().map((stay: any) => {
+    if (stay.id !== id) return stay;
+
+    const deposits = Array.isArray(stay.deposits) ? stay.deposits : [];
+
+    return {
+      ...stay,
+      deposits: [
+        ...deposits,
+        { amount, date: new Date().toISOString().slice(0, 10) },
+      ],
+    };
+  });
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(stays)
+  );
+}
